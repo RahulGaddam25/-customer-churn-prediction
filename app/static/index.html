@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+ <title>Customer Churn Prediction</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231a1a2e'/><text y='78' x='50' text-anchor='middle' font-size='65' font-family='Segoe UI,sans-serif' font-weight='700' fill='%234361ee'>R</text></svg>"/>
+  <style>
+   * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      padding: 30px 20px;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      color: white;
+      padding: 36px;
+      border-radius: 16px;
+      margin-bottom: 28px;
+      text-align: center;
+    }
+    .header h1 { font-size: 28px; margin-bottom: 8px; }
+    .header p  { font-size: 15px; opacity: 0.75; }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    }
+    .card h2 {
+      font-size: 16px;
+      color: #1a1a2e;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #f0f4f8;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 6px;
+    }
+    .field input,
+    .field select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #333;
+      background: #fafafa;
+      transition: border 0.2s;
+      outline: none;
+    }
+    .field input:focus,
+    .field select:focus {
+      border-color: #4361ee;
+      background: white;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #4361ee, #3a0ca3);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn:hover   { opacity: 0.92; transform: translateY(-1px); }
+    .btn:active  { transform: translateY(0); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .result { display: none; }
+    .result-box {
+      border-radius: 14px;
+      padding: 28px;
+      text-align: center;
+    }
+    .result-box.churn    { background: #fff0f0; border: 2px solid #ffcccc; }
+    .result-box.no-churn { background: #f0fff4; border: 2px solid #b2f0c8; }
+
+    .result-icon  { font-size: 48px; margin-bottom: 12px; }
+    .result-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .result-title.churn    { color: #c0392b; }
+    .result-title.no-churn { color: #1a7a3c; }
+    .result-sub   { font-size: 14px; color: #666; margin-bottom: 20px; }
+
+    .metrics {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .metric {
+      background: white;
+      border-radius: 10px;
+      padding: 14px 22px;
+      text-align: center;
+      min-width: 120px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+    .metric-val  { font-size: 22px; font-weight: 700; color: #1a1a2e; }
+    .metric-label{ font-size: 12px; color: #888; margin-top: 4px; }
+
+    .prob-bar-wrap {
+      background: #eee;
+      border-radius: 999px;
+      height: 10px;
+      margin: 16px 0 6px;
+      overflow: hidden;
+    }
+    .prob-bar {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.8s ease;
+    }
+    .prob-bar.churn    { background: linear-gradient(90deg, #e74c3c, #c0392b); }
+    .prob-bar.no-churn { background: linear-gradient(90deg, #2ecc71, #1a7a3c); }
+
+    .spinner {
+      display: none;
+      text-align: center;
+      padding: 20px;
+      color: #666;
+      font-size: 15px;
+    }
+
+    .error-box {
+      background: #fff0f0;
+      border: 1.5px solid #ffcccc;
+      border-radius: 10px;
+      padding: 14px 18px;
+      color: #c0392b;
+      font-size: 14px;
+      display: none;
+      margin-top: 12px;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 13px;
+      color: #aaa;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 600px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>Customer Churn Prediction</h1>
+    <p>Enter customer details below to predict whether they will churn or stay</p>
+  </div>
+
+  <!-- Form -->
+  <div class="card">
+    <h2>Personal Information</h2>
+    <div class="grid">
+      <div class="field">
+        <label>Gender</label>
+        <select id="gender">
+          <option>Male</option>
+          <option>Female</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Senior Citizen</label>
+        <select id="SeniorCitizen">
+          <option value="0">No</option>
+          <option value="1">Yes</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Partner</label>
+        <select id="Partner">
+          <option>Yes</option>
+          <option>No</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Dependents</label>
+        <select id="Dependents">
+          <option>No</option>
+          <option>Yes</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Account Information</h2>
+    <div class="grid">
+      <div class="field">
+        <label>Tenure (months)</label>
+        <input type="number" id="tenure" value="12" min="0" max="72"/>
+      </div>
+      <div class="field">
+        <label>Contract Type</label>
+        <select id="Contract">
+          <option>Month-to-month</option>
+          <option>One year</option>
+          <option>Two year</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Paperless Billing</label>
+        <select id="PaperlessBilling">
+          <option>Yes</option>
+          <option>No</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Payment Method</label>
+        <select id="PaymentMethod">
+          <option>Electronic check</option>
+          <option>Mailed check</option>
+          <option>Bank transfer (automatic)</option>
+          <option>Credit card (automatic)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Monthly Charges ($)</label>
+        <input type="number" id="MonthlyCharges" value="70.35" step="0.01"/>
+      </div>
+      <div class="field">
+        <label>Total Charges ($)</label>
+        <input type="number" id="TotalCharges" value="844.20" step="0.01"/>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Services</h2>
+    <div class="grid">
+      <div class="field">
+        <label>Phone Service</label>
+        <select id="PhoneService">
+          <option>Yes</option>
+          <option>No</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Multiple Lines</label>
+        <select id="MultipleLines">
+          <option>No</option>
+          <option>Yes</option>
+          <option>No phone service</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Internet Service</label>
+        <select id="InternetService">
+          <option>Fiber optic</option>
+          <option>DSL</option>
+          <option>No</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Online Security</label>
+        <select id="OnlineSecurity">
+          <option>No</option>
+          <option>Yes</option>
+          <option>No internet service</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Online Backup</label>
+        <select id="OnlineBackup">
+          <option>Yes</option>
+          <option>No</option>
+          <option>No internet service</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Device Protection</label>
+        <select id="DeviceProtection">
+          <option>No</option>
+          <option>Yes</option>
+          <option>No internet service</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Tech Support</label>
+        <select id="TechSupport">
+          <option>No</option>
+          <option>Yes</option>
+          <option>No internet service</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Streaming TV</label>
+        <select id="StreamingTV">
+          <option>Yes</option>
+          <option>No</option>
+          <option>No internet service</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Streaming Movies</label>
+        <select id="StreamingMovies">
+          <option>No</option>
+          <option>Yes</option>
+          <option>No internet service</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Predict Button -->
+  <button class="btn" onclick="predict()">Predict Churn</button>
+
+  <!-- Spinner -->
+  <div class="spinner" id="spinner">Analyzing customer data...</div>
+
+  <!-- Error -->
+  <div class="error-box" id="errorBox"></div>
+
+  <!-- Result -->
+  <div class="result card" id="result">
+    <div class="result-box" id="resultBox">
+      <div class="result-icon" id="resultIcon"></div>
+      <div class="result-title" id="resultTitle"></div>
+      <div class="result-sub"  id="resultSub"></div>
+      <div class="prob-bar-wrap">
+        <div class="prob-bar" id="probBar"></div>
+      </div>
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-val"  id="metricProb"></div>
+          <div class="metric-label">Churn Probability</div>
+        </div>
+        <div class="metric">
+          <div class="metric-val"  id="metricConf"></div>
+          <div class="metric-label">Confidence</div>
+        </div>
+        <div class="metric">
+          <div class="metric-val"  id="metricPred"></div>
+          <div class="metric-label">Prediction</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- Batch Prediction -->
+  <div class="card">
+    <h2>Batch Prediction — Upload CSV</h2>
+    <p style="font-size:13px;color:#666;margin-bottom:16px;">
+      Upload a CSV file with multiple customers to get predictions for all at once.
+      The file must have the same columns as the single prediction form.
+    </p>
+    <div style="border:2px dashed #d0d0d0;border-radius:10px;padding:24px;text-align:center;background:#fafafa;">
+      <div style="font-size:36px;margin-bottom:10px;">📂</div>
+      <input type="file" id="csvFile" accept=".csv"
+        style="display:none" onchange="handleFileSelect(this)"/>
+      <button class="btn" style="width:auto;padding:10px 28px;margin:0 0 10px"
+        onclick="document.getElementById('csvFile').click()">
+        Choose CSV File
+      </button>
+      <div id="fileName" style="font-size:13px;color:#888;margin-top:8px;">
+        No file chosen
+      </div>
+    </div>
+
+    <button class="btn" id="batchBtn" onclick="predictBatch()"
+      style="margin-top:16px;" disabled>
+      Run Batch Prediction
+    </button>
+
+    <div id="batchSpinner"
+      style="display:none;text-align:center;padding:16px;color:#666;font-size:14px;">
+      Processing your file...
+    </div>
+
+    <div id="batchResult"
+      style="display:none;margin-top:16px;padding:16px;background:#f0fff4;
+             border:1.5px solid #b2f0c8;border-radius:10px;text-align:center;">
+      <div style="font-size:24px;">✅</div>
+      <div id="batchResultText"
+        style="font-size:15px;font-weight:600;color:#1a7a3c;margin:8px 0;"></div>
+      <a id="downloadLink" href="#"
+        style="display:inline-block;margin-top:8px;padding:10px 24px;
+               background:#1a7a3c;color:white;border-radius:8px;
+               text-decoration:none;font-size:14px;font-weight:600;">
+        Download Results CSV
+      </a>
+    </div>
+
+    <div id="batchError"
+      style="display:none;margin-top:12px;padding:14px;background:#fff0f0;
+             border:1.5px solid #ffcccc;border-radius:10px;
+             color:#c0392b;font-size:14px;">
+    </div>
+  </div>
+  <div class="footer">
+    Built by Rahul Gaddam &nbsp;|&nbsp; Random Forest Model &nbsp;|&nbsp; Accuracy: 78.75%
+  </div>
+
+</div>
+
+<script>
+  async function predict() {
+    const btn     = document.querySelector('.btn');
+    const spinner = document.getElementById('spinner');
+    const errorBox= document.getElementById('errorBox');
+    const result  = document.getElementById('result');
+
+    // Hide previous results
+    result.style.display  = 'none';
+    errorBox.style.display= 'none';
+    btn.disabled  = true;
+    spinner.style.display = 'block';
+
+    const payload = {
+      gender          : document.getElementById('gender').value,
+      SeniorCitizen   : parseInt(document.getElementById('SeniorCitizen').value),
+      Partner         : document.getElementById('Partner').value,
+      Dependents      : document.getElementById('Dependents').value,
+      tenure          : parseInt(document.getElementById('tenure').value),
+      PhoneService    : document.getElementById('PhoneService').value,
+      MultipleLines   : document.getElementById('MultipleLines').value,
+      InternetService : document.getElementById('InternetService').value,
+      OnlineSecurity  : document.getElementById('OnlineSecurity').value,
+      OnlineBackup    : document.getElementById('OnlineBackup').value,
+      DeviceProtection: document.getElementById('DeviceProtection').value,
+      TechSupport     : document.getElementById('TechSupport').value,
+      StreamingTV     : document.getElementById('StreamingTV').value,
+      StreamingMovies : document.getElementById('StreamingMovies').value,
+      Contract        : document.getElementById('Contract').value,
+      PaperlessBilling: document.getElementById('PaperlessBilling').value,
+      PaymentMethod   : document.getElementById('PaymentMethod').value,
+      MonthlyCharges  : parseFloat(document.getElementById('MonthlyCharges').value),
+      TotalCharges    : parseFloat(document.getElementById('TotalCharges').value),
+    };
+
+    try {
+      const res  = await fetch('http://127.0.0.1:8000/predict', {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error('API error: ' + res.status);
+
+      const data = await res.json();
+      showResult(data);
+
+    } catch (err) {
+      errorBox.textContent   = 'Error: ' + err.message + '. Make sure the API is running.';
+      errorBox.style.display = 'block';
+    } finally {
+      btn.disabled          = false;
+      spinner.style.display = 'none';
+    }
+  }
+
+  function showResult(data) {
+    const isChurn = data.churn_prediction === 1;
+    const prob    = (data.churn_probability * 100).toFixed(1);
+
+    document.getElementById('resultBox').className  = 'result-box ' + (isChurn ? 'churn' : 'no-churn');
+    document.getElementById('resultIcon').textContent= isChurn ? '⚠️' : '✅';
+    document.getElementById('resultTitle').textContent = data.result;
+    document.getElementById('resultTitle').className = 'result-title ' + (isChurn ? 'churn' : 'no-churn');
+    document.getElementById('resultSub').textContent = isChurn
+      ? 'This customer is likely to leave. Consider a retention offer.'
+      : 'This customer is likely to stay. Keep up the good service!';
+
+    const bar = document.getElementById('probBar');
+    bar.className  = 'prob-bar ' + (isChurn ? 'churn' : 'no-churn');
+    bar.style.width= prob + '%';
+
+    document.getElementById('metricProb').textContent = prob + '%';
+    document.getElementById('metricConf').textContent = data.confidence;
+    document.getElementById('metricPred').textContent = isChurn ? 'Churn' : 'Stay';
+
+    document.getElementById('result').style.display = 'block';
+    document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+  }let selectedFile = null;
+
+  function handleFileSelect(input) {
+    selectedFile = input.files[0];
+    document.getElementById('fileName').textContent = selectedFile
+      ? selectedFile.name : 'No file chosen';
+    document.getElementById('batchBtn').disabled = !selectedFile;
+    document.getElementById('batchResult').style.display = 'none';
+    document.getElementById('batchError').style.display  = 'none';
+  }
+
+  async function predictBatch() {
+    if (!selectedFile) return;
+
+    const btn     = document.getElementById('batchBtn');
+    const spinner = document.getElementById('batchSpinner');
+    const result  = document.getElementById('batchResult');
+    const error   = document.getElementById('batchError');
+
+    btn.disabled          = true;
+    spinner.style.display = 'block';
+    result.style.display  = 'none';
+    error.style.display   = 'none';
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const res = await fetch('http://127.0.0.1:8000/predict-batch', {
+        method: 'POST',
+        body  : formData,
+      });
+
+      if (!res.ok) throw new Error('Batch prediction failed: ' + res.status);
+
+      // Get the CSV blob and create download link
+      const blob = await res.blob();
+      const url  = window.URL.createObjectURL(blob);
+
+      document.getElementById('downloadLink').href = url;
+      document.getElementById('downloadLink').download = 'churn_predictions.csv';
+      document.getElementById('batchResultText').textContent =
+        'Predictions complete! Click below to download your results.';
+      result.style.display = 'block';
+      result.scrollIntoView({ behavior: 'smooth' });
+
+    } catch (err) {
+      error.textContent    = 'Error: ' + err.message;
+      error.style.display  = 'block';
+    } finally {
+      btn.disabled          = false;
+      spinner.style.display = 'none';
+    }
+  }
+</script>
+</body>
+</html>

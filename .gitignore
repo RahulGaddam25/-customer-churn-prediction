@@ -1,0 +1,22 @@
+# Virtual environment
+venv/
+
+# Model files
+models/*.pkl
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Environment variables
+.env
+
+# VS Code settings
+.vscode/
+
+# Data files
+data/*.csv
